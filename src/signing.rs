@@ -10,7 +10,6 @@ use std::fmt::Debug;
 use crate::{
     constants::{gen_h, gen_z, SECRET_KEY_LENGTH},
     errors::SigningError,
-    verifying::VerifyingKey,
 };
 
 pub type SecretKey = [u8; SECRET_KEY_LENGTH];
@@ -19,8 +18,7 @@ pub type SecretKey = [u8; SECRET_KEY_LENGTH];
 // this struct, except that in the future we might want to do something similar
 // to EdDSA, i.e., using part of the secret key as a salt to a hash function.
 pub struct SigningKey {
-    pub(crate) secret_key: SecretKey,
-    pub(crate) verifying_key: VerifyingKey,
+    pub(crate) scalar: Scalar,
 }
 
 #[derive(Debug)]
@@ -89,14 +87,54 @@ impl PreSignature {
         .try_into()
         .expect("slice with incorrect length")
     }
+
+    pub fn from_bytes(bytes: &[u8; 32 * 5]) -> Option<Self> {
+        Some(PreSignature {
+            c: Scalar::from_canonical_bytes(
+                (&bytes[0..32])
+                    .try_into()
+                    .expect("slice with incorrect length"),
+            )
+            .into_option()?,
+            d: Scalar::from_canonical_bytes(
+                (&bytes[32..64])
+                    .try_into()
+                    .expect("slice with incorrect length"),
+            )
+            .into_option()?,
+            r: Scalar::from_canonical_bytes(
+                (&bytes[64..96])
+                    .try_into()
+                    .expect("slice with incorrect length"),
+            )
+            .into_option()?,
+            s1: Scalar::from_canonical_bytes(
+                (&bytes[96..128])
+                    .try_into()
+                    .expect("slice with incorrect length"),
+            )
+            .into_option()?,
+            s2: Scalar::from_canonical_bytes(
+                (&bytes[128..160])
+                    .try_into()
+                    .expect("slice with incorrect length"),
+            )
+            .into_option()?,
+        })
+    }
 }
 
 impl SigningKey {
     pub fn from_bytes(secret_key: &SecretKey) -> Self {
-        let verifying_key = VerifyingKey::from(&ExpandedSecretKey::from(secret_key));
+        let mut hash = Sha512::new();
+        hash.update(secret_key);
+        let digest = hash.finalize();
+
+        let mut scalar_bytes: [u8; 32] = [0u8; 32];
+        scalar_bytes.copy_from_slice(&digest.as_slice()[00..32]);
+
         Self {
-            secret_key: *secret_key,
-            verifying_key,
+            scalar: Scalar::from_bytes_mod_order(clamp_integer(scalar_bytes)),
         }
     }
 
@@ -137,7 +175,7 @@ impl SigningKey {
             .ok_or("unable to parse challenge as scalar")?;
 
         let c = e - state.d;
-        let r = state.u - c * ExpandedSecretKey::from(&self.secret_key).scalar;
+        let r = state.u - c * self.scalar;
 
         Ok((&PreSignature {
             c: c,
@@ -147,28 +185,5 @@ impl SigningKey {
             s2: state.s2.clone(),
         })
             .to_bytes())
-    }
-}
-
-pub struct ExpandedSecretKey {
-    pub scalar: Scalar,
-}
-
-impl ExpandedSecretKey {
-    pub fn from_bytes(bytes: &[u8; 64]) -> Self {
-        let mut scalar_bytes: [u8; 32] = [0u8; 32];
-        scalar_bytes.copy_from_slice(&bytes[00..32]);
-
-        let scalar = Scalar::from_bytes_mod_order(clamp_integer(scalar_bytes));
-
-        ExpandedSecretKey { scalar: scalar }
-    }
-}
-
-impl From<&SecretKey> for ExpandedSecretKey {
-    fn from(secret_key: &SecretKey) -> ExpandedSecretKey {
-        let mut hash = Sha512::new();
-        hash.update(secret_key);
-        ExpandedSecretKey::from_bytes(hash.finalize().as_ref())
     }
 }

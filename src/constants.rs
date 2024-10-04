@@ -6,6 +6,7 @@ use curve25519_dalek::scalar::Scalar;
 use sha2::Sha512;
 
 pub const SECRET_KEY_LENGTH: usize = 32;
+pub const ATTRIBUTE_ID_LENGTH: usize = 32;
 
 // nothing-up-my-sleeve generation of another generator as H=SHA512(G)
 pub(crate) fn gen_h() -> &'static RistrettoPoint {

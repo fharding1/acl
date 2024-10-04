@@ -58,4 +58,3 @@ impl From<TryFromSliceError> for VerifyingError {
         VerifyingError::CompressedPointFormat
     }
 }
-
