@@ -56,6 +56,12 @@ pub struct BlindedCommitment<const N: usize> {
     pub(crate) commitment: GeneralizedPedersenCommitment<N>,
 }
 
+impl<const N: usize> BlindedCommitment<N> {
+    pub fn to_bytes(&self) -> [u8; 32] {
+        RistrettoPoint::from(self).compress().to_bytes()
+    }
+}
+
 impl<const N: usize> From<&BlindedCommitment<N>> for RistrettoPoint {
     fn from(blinded_commitment: &BlindedCommitment<N>) -> RistrettoPoint {
         let rnd = Scalar::from_bytes_mod_order(blinded_commitment.rnd);

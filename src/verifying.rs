@@ -43,7 +43,7 @@ pub(crate) fn compute_challenge(
 }
 
 impl VerifyingKey {
-    pub(crate) fn verify_prehashed(
+    pub fn verify_prehashed(
         &self,
         hashed_message: &[u8; 64],
         commitment_bytes: &[u8; 32],

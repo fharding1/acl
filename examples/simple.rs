@@ -94,13 +94,14 @@ fn main() {
         .compute_challenge(&mut OsRng, &commitment, &[0u8; 64], &prepare_message)
         .expect("this should work");
 
-    println!("{:?}", RistrettoPoint::from(&us.commitment) == RistrettoPoint::from(&commitment));
-
     let presignature = signing_key
         .compute_presignature(&ss, &challenge)
         .expect("should work");
 
-    let (blinded_commitment, signature) = user_params
+    let (signature, blinded_commitment) = user_params
         .compute_signature(&us, &presignature)
         .expect("sig should be fine");
+
+    println!("valid: {:?}", user_params.key.verify_prehashed(&[0u8; 64], &blinded_commitment.to_bytes(), &signature));
+    println!("valid: {:?}", user_params.key.verify_prehashed(&[1u8; 64], &blinded_commitment.to_bytes(), &signature));
 }

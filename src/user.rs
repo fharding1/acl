@@ -21,7 +21,7 @@ pub struct UserParameters<const N: usize> {
 
 #[derive(Debug)]
 pub struct UserState<const N: usize> {
-    pub commitment: GeneralizedPedersenCommitment<N>,
+    pub(crate) commitment: GeneralizedPedersenCommitment<N>,
     pub(crate) rnd: Scalar,
     pub(crate) gamma: Scalar,
     pub(crate) xi: RistrettoPoint,
