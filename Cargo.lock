@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "curve25519-dalek",
  "digest",
+ "group",
  "rand_core",
  "sha2",
 ]

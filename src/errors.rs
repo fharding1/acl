@@ -58,3 +58,42 @@ impl From<TryFromSliceError> for VerifyingError {
         VerifyingError::CompressedPointFormat
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum UserError {
+    CompressedPointFormat,
+    PointDecompression,
+    RndZero,
+    ScalarFormat,
+    GammaZero,
+    Invalid { err: VerifyingError },
+}
+
+impl Error for UserError {}
+
+impl From<VerifyingError> for UserError {
+    fn from(err: VerifyingError) -> UserError {
+        UserError::Invalid { err }
+    }
+}
+
+impl Display for UserError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            UserError::CompressedPointFormat => {
+                write!(f, "Compressed Ristretto point is incorrectly formatted")
+            }
+            UserError::PointDecompression => write!(f, "Cannot decompress Ristretto point"),
+            UserError::RndZero => write!(f, "Signer did not generate a non-zero value for rnd"),
+            UserError::ScalarFormat => write!(f, "Scalar is not canonically formatted"),
+            UserError::GammaZero => write!(f, "Accidentally generated a zero value for gamma"),
+            UserError::Invalid { err } => write!(f, "Invalid signature: {}", err),
+        }
+    }
+}
+
+impl From<TryFromSliceError> for UserError {
+    fn from(_: TryFromSliceError) -> UserError {
+        UserError::CompressedPointFormat
+    }
+}

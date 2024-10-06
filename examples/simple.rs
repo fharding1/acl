@@ -1,6 +1,10 @@
-use acl::{SigningKey, ATTRIBUTE_ID_LENGTH, SECRET_KEY_LENGTH};
+use acl::{
+    commit, SigningKey, UserParameters, VerifyingKey, ATTRIBUTE_ID_LENGTH, SECRET_KEY_LENGTH,
+};
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+
+use rand_core::OsRng;
 
 use sha2::Sha512;
 
@@ -47,13 +51,56 @@ fn main() {
     let (ss, msg) = signing_key.prepare(&[0u8; 32]).expect("this should fail");
     let presig = signing_key.compute_presignature(&ss, &[0u8; 32]);
 
-    //println!("{:?}, {:?}", ss, msg);
-    //println!("{:?}", presig);
-
     let bob = UserAttributes {
         user_id: 1,
         user_type: UserType::Subscriber,
         is_sports_subscriber: true,
         is_tech_subscriber: false,
     };
+
+    let attribute_ids = [
+        UserAttributeID::UserID.as_bytes(),
+        UserAttributeID::Type.as_bytes(),
+        UserAttributeID::Sports.as_bytes(),
+        UserAttributeID::Tech.as_bytes(),
+    ];
+
+    let commitment = commit(
+        &mut OsRng,
+        attribute_ids,
+        [
+            bob.user_id,
+            bob.user_type as u128,
+            bob.is_sports_subscriber as u128,
+            bob.is_tech_subscriber as u128,
+        ],
+    );
+
+
+    println!("commitment : {:?}", RistrettoPoint::from(&commitment));
+
+    let commit_bytes = commitment.to_bytes();
+
+    let (ss, prepare_message) = signing_key
+        .prepare(&commit_bytes)
+        .expect("this should work");
+
+    let user_params = UserParameters::<4> {
+        key: VerifyingKey::from(&signing_key),
+        attribute_ids: attribute_ids,
+    };
+
+    let (us, challenge) = user_params
+        .compute_challenge(&mut OsRng, &commitment, &[0u8; 64], &prepare_message)
+        .expect("this should work");
+
+    println!("{:?}", RistrettoPoint::from(&us.commitment) == RistrettoPoint::from(&commitment));
+
+    let presignature = signing_key
+        .compute_presignature(&ss, &challenge)
+        .expect("should work");
+
+    let (blinded_commitment, signature) = user_params
+        .compute_signature(&us, &presignature)
+        .expect("sig should be fine");
 }

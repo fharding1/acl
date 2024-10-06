@@ -7,6 +7,7 @@ use sha2::Sha512;
 pub type AttributeIdentifier = [u8; ATTRIBUTE_ID_LENGTH];
 pub type Attribute = u128;
 
+#[derive(Debug,Clone)]
 pub struct GeneralizedPedersenCommitment<const N: usize> {
     randomness: [u8; 32],
     attribute_ids: [AttributeIdentifier; N],
@@ -28,27 +29,40 @@ pub fn commit<R: RngCore + CryptoRng, const N: usize>(
     }
 }
 
-impl<const N: usize> GeneralizedPedersenCommitment::<N> {
+impl<const N: usize> GeneralizedPedersenCommitment<N> {
     pub fn to_bytes(&self) -> [u8; 32] {
         RistrettoPoint::from(self).compress().to_bytes()
     }
 }
 
 impl<const N: usize> From<&GeneralizedPedersenCommitment<N>> for RistrettoPoint {
-    fn from(cmt: &GeneralizedPedersenCommitment<N>) -> RistrettoPoint {
-        let mut point = gen_h() * Scalar::from_bytes_mod_order(clamp_integer(cmt.randomness));
+    fn from(commitment: &GeneralizedPedersenCommitment<N>) -> RistrettoPoint {
+        let mut point =
+            gen_h() * Scalar::from_bytes_mod_order(clamp_integer(commitment.randomness));
 
         for i in 1..N {
-            let generator = RistrettoPoint::hash_from_bytes::<Sha512>(&cmt.attribute_ids[i]);
-            point = point + generator * Scalar::from(cmt.attributes[i]);
+            let generator = RistrettoPoint::hash_from_bytes::<Sha512>(&commitment.attribute_ids[i]);
+            point = point + generator * Scalar::from(commitment.attributes[i]);
         }
 
         point
     }
 }
 
+#[derive(Clone,Debug)]
 pub struct BlindedCommitment<const N: usize> {
-    gamma: [u8; 32],
-    rnd: [u8; 32],
-    cmt: GeneralizedPedersenCommitment<N>,
+    pub(crate) gamma: [u8; 32],
+    pub(crate) rnd: [u8; 32],
+    pub(crate) commitment: GeneralizedPedersenCommitment<N>,
+}
+
+impl<const N: usize> From<&BlindedCommitment<N>> for RistrettoPoint {
+    fn from(blinded_commitment: &BlindedCommitment<N>) -> RistrettoPoint {
+        let rnd = Scalar::from_bytes_mod_order(blinded_commitment.rnd);
+        let gamma = Scalar::from_bytes_mod_order(blinded_commitment.gamma);
+
+        gamma
+            * (RistrettoPoint::from(&blinded_commitment.commitment)
+                + RistrettoPoint::mul_base(&rnd))
+    }
 }

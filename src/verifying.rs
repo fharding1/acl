@@ -20,48 +20,50 @@ impl From<&SigningKey> for VerifyingKey {
     }
 }
 
+pub(crate) fn compute_challenge(
+    xi: &RistrettoPoint,
+    xi1: &RistrettoPoint,
+    alpha: &RistrettoPoint,
+    beta1: &RistrettoPoint,
+    beta2: &RistrettoPoint,
+    eta: &RistrettoPoint,
+    hashed_message: &[u8; 64],
+) -> Scalar {
+    let mut hash = Sha512::new();
+    
+    hash.update(xi.compress().to_bytes());
+    hash.update(xi1.compress().to_bytes());
+    hash.update(alpha.compress().to_bytes());
+    hash.update(beta1.compress().to_bytes());
+    hash.update(beta2.compress().to_bytes());
+    hash.update(eta.compress().to_bytes());
+    hash.update(hashed_message);
+
+    Scalar::from_bytes_mod_order_wide(hash.finalize().as_ref())
+}
+
 impl VerifyingKey {
-    pub(crate) fn verify_prehashed<MsgDigest>(
+    pub(crate) fn verify_prehashed(
         &self,
-        prehashed_message: MsgDigest,
+        hashed_message: &[u8; 64],
         commitment_bytes: &[u8; 32],
         sig: &Signature,
-    ) -> Result<(), VerifyingError>
-    where
-        MsgDigest: Digest<OutputSize = U64>,
-    {
+    ) -> Result<(), VerifyingError> {
         let commitment = CompressedRistretto::from_slice(commitment_bytes)?
             .decompress()
             .ok_or(VerifyingError::PointDecompression)?;
 
-        let mut hash = Sha512::new();
-        hash.update(sig.xi.compress().to_bytes());
-        hash.update(commitment_bytes);
-        hash.update(
-            (RistrettoPoint::mul_base(&sig.rho) + self.point * sig.omega)
-                .compress()
-                .to_bytes(),
+        let check = compute_challenge(
+            &sig.xi,
+            &commitment,
+            &(RistrettoPoint::mul_base(&sig.rho) + self.point * sig.omega),
+            &(RistrettoPoint::mul_base(&sig.sigma1) + commitment * sig.delta),
+            &(sig.sigma2 * gen_h() + (sig.xi - commitment) * sig.delta),
+            &(sig.mu * gen_z() + sig.xi * sig.delta),
+            hashed_message,
         );
-        hash.update(
-            (RistrettoPoint::mul_base(&sig.rho1_prime) + commitment * sig.omega_prime)
-                .compress()
-                .to_bytes(),
-        );
-        hash.update(
-            (sig.rho2_prime * gen_h() + (commitment - sig.xi) * sig.omega_prime)
-                .compress()
-                .to_bytes(),
-        );
-        hash.update(
-            (sig.mu * gen_z() + commitment * sig.omega_prime)
-                .compress()
-                .to_bytes(),
-        );
-        hash.update(prehashed_message.finalize());
 
-        let check = Scalar::from_bytes_mod_order_wide(hash.finalize().as_ref());
-
-        if check == sig.omega + sig.omega_prime {
+        if check == sig.omega + sig.delta {
             Ok(())
         } else {
             Err(VerifyingError::Invalid)

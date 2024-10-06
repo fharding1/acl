@@ -43,11 +43,11 @@ impl SignerState {
 }
 
 #[derive(Debug)]
-struct PrepareMessage {
-    a: RistrettoPoint,
-    b1: RistrettoPoint,
-    b2: RistrettoPoint,
-    rnd: Scalar,
+pub(crate) struct PrepareMessage {
+    pub(crate) a: RistrettoPoint,
+    pub(crate) b1: RistrettoPoint,
+    pub(crate) b2: RistrettoPoint,
+    pub(crate) rnd: Scalar,
 }
 
 impl PrepareMessage {
@@ -65,12 +65,12 @@ impl PrepareMessage {
     }
 }
 
-struct PreSignature {
-    c: Scalar,
-    d: Scalar,
-    r: Scalar,
-    s1: Scalar,
-    s2: Scalar,
+pub(crate) struct PreSignature {
+    pub(crate) c: Scalar,
+    pub(crate) d: Scalar,
+    pub(crate) r: Scalar,
+    pub(crate) s1: Scalar,
+    pub(crate) s2: Scalar,
 }
 
 impl PreSignature {
@@ -86,41 +86,6 @@ impl PreSignature {
         .as_slice()
         .try_into()
         .expect("slice with incorrect length")
-    }
-
-    pub fn from_bytes(bytes: &[u8; 32 * 5]) -> Option<Self> {
-        Some(PreSignature {
-            c: Scalar::from_canonical_bytes(
-                (&bytes[0..32])
-                    .try_into()
-                    .expect("slice with incorrect length"),
-            )
-            .into_option()?,
-            d: Scalar::from_canonical_bytes(
-                (&bytes[32..64])
-                    .try_into()
-                    .expect("slice with incorrect length"),
-            )
-            .into_option()?,
-            r: Scalar::from_canonical_bytes(
-                (&bytes[64..96])
-                    .try_into()
-                    .expect("slice with incorrect length"),
-            )
-            .into_option()?,
-            s1: Scalar::from_canonical_bytes(
-                (&bytes[96..128])
-                    .try_into()
-                    .expect("slice with incorrect length"),
-            )
-            .into_option()?,
-            s2: Scalar::from_canonical_bytes(
-                (&bytes[128..160])
-                    .try_into()
-                    .expect("slice with incorrect length"),
-            )
-            .into_option()?,
-        })
     }
 }
 
@@ -156,7 +121,7 @@ impl SigningKey {
         let msg = PrepareMessage {
             a: RistrettoPoint::mul_base(&state.u),
             b1: RistrettoPoint::mul_base(&state.s1) + z1 * state.d,
-            b2: gen_h() * state.s1 + z2 * state.d,
+            b2: gen_h() * state.s2 + z2 * state.d,
             rnd: state.rnd.clone(),
         };
 
