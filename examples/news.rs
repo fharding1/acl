@@ -4,6 +4,7 @@
 
 use serde::{Serialize,Deserialize};
 use rocket_contrib::json::Json;
+use chrono::{Duration,Utc,NaiveTime};
 use jsonwebtoken::{decode,encode,get_current_timestamp,Algorithm,DecodingKey,EncodingKey,Header,Validation};
 
 #[derive(Serialize, Deserialize)]
@@ -14,8 +15,8 @@ struct Credentials {
 
 #[derive(Debug,Serialize,Deserialize)]
 struct Claims {
-    sub: String,
     exp: u64,
+    id: u64,
 }
 
 const key: &[u8] = b"99023a4b-186c-41b8-9817-0a0d232f2402";
@@ -23,8 +24,8 @@ const key: &[u8] = b"99023a4b-186c-41b8-9817-0a0d232f2402";
 #[post("/login", format = "application/json", data = "<credentials>")]
 fn login(credentials: Json<Credentials>) -> String {
     let claims = Claims {
-        sub: credentials.username.to_owned(),
-        exp: get_current_timestamp() + 60,
+        id: 0x1234,
+        exp: (Utc::now().with_time(NaiveTime::MIN).unwrap() + Duration::days(1)).timestamp() as u64,
     };
     encode(&Header::default(), &claims, &EncodingKey::from_secret(key)).expect("asdf")
 }

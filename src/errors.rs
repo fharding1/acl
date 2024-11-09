@@ -36,6 +36,7 @@ pub enum VerifyingError {
     PointDecompression,
     Invalid,
     ScalarFormat,
+    KeyFormat,
 }
 
 impl Display for VerifyingError {
@@ -47,6 +48,7 @@ impl Display for VerifyingError {
             VerifyingError::PointDecompression => write!(f, "Cannot decompress Ristretto point"),
             VerifyingError::Invalid => write!(f, "Signature is invalid"),
             VerifyingError::ScalarFormat => write!(f, "Scalar is not canonically formatted"),
+            VerifyingError::KeyFormat => write!(f, "Verifying key is incorrectly formatted or cannot be decompressed"),
         }
     }
 }

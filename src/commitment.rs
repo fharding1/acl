@@ -3,14 +3,23 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::{clamp_integer, Scalar};
 use rand_core::{CryptoRng, RngCore};
 use sha2::Sha512;
+use serde::{Serialize,Deserialize};
+use serde_with::serde_as;
 
 pub type AttributeIdentifier = [u8; ATTRIBUTE_ID_LENGTH];
+
 pub type Attribute = u128;
 
-#[derive(Debug,Clone)]
+#[serde_as]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct GeneralizedPedersenCommitment<const N: usize> {
+    #[serde(with = "serde_bytes")]
     randomness: [u8; 32],
+
+    #[serde_as(as = "[_; N]")]
     attribute_ids: [AttributeIdentifier; N],
+
+    #[serde_as(as = "[_; N]")]
     attributes: [Attribute; N],
 }
 
@@ -49,9 +58,11 @@ impl<const N: usize> From<&GeneralizedPedersenCommitment<N>> for RistrettoPoint 
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct BlindedCommitment<const N: usize> {
+    #[serde(with="serde_bytes")]
     pub(crate) gamma: [u8; 32],
+    #[serde(with="serde_bytes")]
     pub(crate) rnd: [u8; 32],
     pub(crate) commitment: GeneralizedPedersenCommitment<N>,
 }

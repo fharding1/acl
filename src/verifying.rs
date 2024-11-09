@@ -20,6 +20,21 @@ impl From<&SigningKey> for VerifyingKey {
     }
 }
 
+impl VerifyingKey {
+    fn to_bytes(&self) -> [u8; 32] {
+        self.point.compress().to_bytes()
+    }
+}
+
+impl TryFrom<&[u8; 32]> for VerifyingKey {
+    type Error = VerifyingError;
+
+    fn try_from(bytes: &[u8; 32]) -> Result<VerifyingKey, VerifyingError> {
+        Ok(VerifyingKey { point: CompressedRistretto::from_slice(bytes)?.decompress().ok_or(VerifyingError::KeyFormat)? })
+    }
+}
+
+
 pub(crate) fn compute_challenge(
     xi: &RistrettoPoint,
     xi1: &RistrettoPoint,
