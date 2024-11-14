@@ -1,4 +1,3 @@
-mod commitment;
 mod constants;
 mod errors;
 mod signature;
@@ -6,7 +5,6 @@ mod signing;
 mod user;
 mod verifying;
 
-pub use crate::commitment::*;
 pub use crate::constants::*;
 pub use crate::errors::*;
 pub use crate::signature::*;

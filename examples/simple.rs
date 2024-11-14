@@ -1,8 +1,9 @@
 use acl::{
-    commit, SigningKey, UserParameters, VerifyingKey, ATTRIBUTE_ID_LENGTH, SECRET_KEY_LENGTH,
+    SigningKey, UserParameters, VerifyingKey,SECRET_KEY_LENGTH, gen_h,
 };
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use group::GroupEncoding;
 
 use rand_core::OsRng;
 
@@ -65,29 +66,18 @@ fn main() {
         UserAttributeID::Tech.as_bytes(),
     ];
 
-    let commitment = commit(
-        &mut OsRng,
-        attribute_ids,
-        [
-            bob.user_id,
-            bob.user_type as u128,
-            bob.is_sports_subscriber as u128,
-            bob.is_tech_subscriber as u128,
-        ],
-    );
+    let generators: Vec<RistrettoPoint> = attribute_ids.into_iter().map(|id| RistrettoPoint::hash_from_bytes::<Sha512>(&id)).collect();
 
+    let commitment = gen_h() * Scalar::random(&mut OsRng) + generators[0] * Scalar::from(bob.user_id) + generators[1] * Scalar::from(bob.user_type as u128) + generators[2] * Scalar::from(bob.is_sports_subscriber as u128) + generators[3] * Scalar::from(bob.is_tech_subscriber as u128);
 
-    println!("commitment : {:?}", RistrettoPoint::from(&commitment));
-
-    let commit_bytes = commitment.to_bytes();
+    let commit_bytes = commitment.compress().to_bytes();
 
     let (ss, prepare_message) = signing_key
         .prepare(&commit_bytes)
         .expect("this should work");
 
-    let user_params = UserParameters::<4> {
+    let user_params = UserParameters {
         key: VerifyingKey::from(&signing_key),
-        attribute_ids: attribute_ids,
     };
 
     let (us, challenge) = user_params
@@ -98,7 +88,7 @@ fn main() {
         .compute_presignature(&ss, &challenge)
         .expect("should work");
 
-    let (signature, blinded_commitment) = user_params
+    let (signature, blinded_commitment, gamma, rnd) = user_params
         .compute_signature(&us, &presignature)
         .expect("sig should be fine");
 

@@ -1,4 +1,3 @@
-use crate::commitment::{AttributeIdentifier, BlindedCommitment, GeneralizedPedersenCommitment};
 use crate::constants::{gen_h, gen_z};
 use crate::errors::UserError;
 use crate::signature::Signature;
@@ -14,14 +13,13 @@ use rand_core::{CryptoRng, RngCore};
 
 use digest::{generic_array::typenum::U64, Digest};
 
-pub struct UserParameters<const N: usize> {
+pub struct UserParameters {
     pub key: VerifyingKey,
-    pub attribute_ids: [AttributeIdentifier; N],
 }
 
 #[derive(Debug)]
-pub struct UserState<const N: usize> {
-    pub(crate) commitment: GeneralizedPedersenCommitment<N>,
+pub struct UserState {
+    pub(crate) commitment: RistrettoPoint,
     pub(crate) rnd: Scalar,
     pub(crate) gamma: Scalar,
     pub(crate) xi: RistrettoPoint,
@@ -100,21 +98,21 @@ impl TryFrom<&[u8; 32 * 5]> for PreSignature {
     }
 }
 
-impl<const N: usize> UserParameters<N> {
+impl UserParameters {
     pub fn compute_challenge<R: RngCore + CryptoRng>(
         &self,
         rng: &mut R,
-        commitment: &GeneralizedPedersenCommitment<N>,
+        commitment: &RistrettoPoint,
         hashed_message: &[u8; 64],
         signer_message: &[u8; 32 * 4],
-    ) -> Result<(UserState<N>, [u8; 32]), UserError> {
+    ) -> Result<(UserState, [u8; 32]), UserError> {
         let prepare_message = PrepareMessage::try_from(signer_message)?;
 
         if prepare_message.rnd == Scalar::ZERO {
             return Err(UserError::RndZero);
         }
 
-        let z1 = RistrettoPoint::from(commitment) + RistrettoPoint::mul_base(&prepare_message.rnd);
+        let z1 = commitment + RistrettoPoint::mul_base(&prepare_message.rnd);
         let gamma = Scalar::random(rng);
 
         // this is so unlikely that we don't even retry
@@ -163,9 +161,9 @@ impl<const N: usize> UserParameters<N> {
 
     pub fn compute_signature(
         &self,
-        user_state: &UserState<N>,
+        user_state: &UserState,
         presignature_bytes: &[u8; 32 * 5],
-    ) -> Result<(Signature, BlindedCommitment<N>), UserError> {
+    ) -> Result<(Signature, RistrettoPoint, Scalar, Scalar), UserError> {
         let presignature = PreSignature::try_from(presignature_bytes)?;
 
         let rho = presignature.r + user_state.t1;
@@ -193,11 +191,9 @@ impl<const N: usize> UserParameters<N> {
 
         Ok((
             signature,
-            BlindedCommitment::<N> {
-                commitment: user_state.commitment.clone(),
-                gamma: user_state.gamma.to_bytes(),
-                rnd: user_state.rnd.to_bytes(),
-            },
+            user_state.gamma * (user_state.commitment + RistrettoPoint::mul_base(&user_state.rnd)),
+            user_state.gamma,
+            user_state.rnd,
         ))
     }
 }
