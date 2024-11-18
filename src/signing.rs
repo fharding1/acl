@@ -89,6 +89,11 @@ impl PreSignature {
     }
 }
 
+/*pub trait SignatureProvider {
+    fn prepare(&self, commitment: &RistrettoPoint, aux: &[u8]) -> Result<[u8; 32*4], SigningError>;
+    fn compute_presignature(&self, challenge_bytes: &[u8]) -> Result<&[u8], String>;
+}*/
+
 impl SigningKey {
     pub fn from_bytes(secret_key: &SecretKey) -> Self {
         let mut hash = Sha512::new();
