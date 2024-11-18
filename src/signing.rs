@@ -107,13 +107,9 @@ impl SigningKey {
     // will use to generate a response
     pub fn prepare(
         &self,
-        commitment_bytes: &[u8; 32],
+        commitment: &RistrettoPoint,
     ) -> Result<(SignerState, [u8; 32 * 4]), SigningError> {
         let state = SignerState::random(&mut OsRng);
-
-        let commitment = CompressedRistretto::from_slice(commitment_bytes)?
-            .decompress()
-            .ok_or(SigningError::PointDecompression)?;
 
         let z1 = RistrettoPoint::mul_base(&state.rnd) + commitment;
         let z2 = gen_z() - z1;

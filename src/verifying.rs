@@ -61,13 +61,9 @@ impl VerifyingKey {
     pub fn verify_prehashed(
         &self,
         hashed_message: &[u8; 64],
-        commitment_bytes: &[u8; 32],
+        commitment: &RistrettoPoint,
         sig: &Signature,
     ) -> Result<(), VerifyingError> {
-        let commitment = CompressedRistretto::from_slice(commitment_bytes)?
-            .decompress()
-            .ok_or(VerifyingError::PointDecompression)?;
-
         let check = compute_challenge(
             &sig.xi,
             &commitment,

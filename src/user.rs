@@ -185,7 +185,7 @@ impl UserParameters {
 
         self.key.verify_prehashed(
             &user_state.hashed_message,
-            &user_state.xi1.compress().to_bytes(),
+            &user_state.xi1,
             &signature,
         )?;
 
