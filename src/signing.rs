@@ -17,6 +17,7 @@ pub type SecretKey = [u8; SECRET_KEY_LENGTH];
 // There's not *really* a reason to not just put the secret key as a scalar in
 // this struct, except that in the future we might want to do something similar
 // to EdDSA, i.e., using part of the secret key as a salt to a hash function.
+#[derive(Copy,Clone,Debug)]
 pub struct SigningKey {
     pub(crate) scalar: Scalar,
 }
@@ -51,7 +52,7 @@ pub(crate) struct PrepareMessage {
 }
 
 impl PrepareMessage {
-    fn to_bytes(&self) -> [u8; 32 * 4] {
+    fn to_bytes(&self) -> Vec<u8> {
         [
             self.a.compress().to_bytes(),
             self.b1.compress().to_bytes(),
@@ -59,9 +60,6 @@ impl PrepareMessage {
             self.rnd.to_bytes(),
         ]
         .concat()
-        .as_slice()
-        .try_into()
-        .expect("slice with incorrect length")
     }
 }
 
@@ -74,7 +72,7 @@ pub(crate) struct PreSignature {
 }
 
 impl PreSignature {
-    fn to_bytes(&self) -> [u8; 32 * 5] {
+    fn to_bytes(&self) -> Vec<u8> {
         [
             self.c.to_bytes(),
             self.d.to_bytes(),
@@ -83,9 +81,6 @@ impl PreSignature {
             self.s2.to_bytes(),
         ]
         .concat()
-        .as_slice()
-        .try_into()
-        .expect("slice with incorrect length")
     }
 }
 
@@ -113,7 +108,7 @@ impl SigningKey {
     pub fn prepare(
         &self,
         commitment: &RistrettoPoint,
-    ) -> Result<(SignerState, [u8; 32 * 4]), SigningError> {
+    ) -> Result<(SignerState, Vec<u8>), SigningError> {
         let state = SignerState::random(&mut OsRng);
 
         let z1 = RistrettoPoint::mul_base(&state.rnd) + commitment;
@@ -126,7 +121,7 @@ impl SigningKey {
             rnd: state.rnd.clone(),
         };
 
-        Ok((state, (&msg).to_bytes()))
+        Ok((state, msg.to_bytes()))
     }
 
     // compute_presignature generates a "presignature" from a challenge, which
@@ -134,9 +129,9 @@ impl SigningKey {
     pub fn compute_presignature(
         &self,
         state: &SignerState,
-        challenge_bytes: &[u8; 32],
-    ) -> Result<[u8; 32 * 5], String> {
-        let e = Scalar::from_canonical_bytes(*challenge_bytes)
+        challenge_bytes: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        let e = Scalar::from_canonical_bytes(challenge_bytes.try_into().expect("todo"))
             .into_option()
             .ok_or("unable to parse challenge as scalar")?;
 

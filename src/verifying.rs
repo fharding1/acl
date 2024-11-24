@@ -21,15 +21,15 @@ impl From<&SigningKey> for VerifyingKey {
 }
 
 impl VerifyingKey {
-    fn to_bytes(&self) -> [u8; 32] {
-        self.point.compress().to_bytes()
+    fn to_bytes(&self) -> Vec<u8> {
+        Vec::from(self.point.compress().to_bytes())
     }
 }
 
-impl TryFrom<&[u8; 32]> for VerifyingKey {
+impl TryFrom<&[u8]> for VerifyingKey {
     type Error = VerifyingError;
 
-    fn try_from(bytes: &[u8; 32]) -> Result<VerifyingKey, VerifyingError> {
+    fn try_from(bytes: &[u8]) -> Result<VerifyingKey, VerifyingError> {
         Ok(VerifyingKey { point: CompressedRistretto::from_slice(bytes)?.decompress().ok_or(VerifyingError::KeyFormat)? })
     }
 }
@@ -42,7 +42,7 @@ pub(crate) fn compute_challenge(
     beta1: &RistrettoPoint,
     beta2: &RistrettoPoint,
     eta: &RistrettoPoint,
-    hashed_message: &[u8; 64],
+    hashed_message: &[u8],
 ) -> Scalar {
     let mut hash = Sha512::new();
     
@@ -60,7 +60,7 @@ pub(crate) fn compute_challenge(
 impl VerifyingKey {
     pub fn verify_prehashed(
         &self,
-        hashed_message: &[u8; 64],
+        hashed_message: &[u8],
         commitment: &RistrettoPoint,
         sig: &Signature,
     ) -> Result<(), VerifyingError> {

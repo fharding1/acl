@@ -30,13 +30,13 @@ pub struct UserState {
     pub(crate) t3: Scalar,
     pub(crate) t4: Scalar,
     pub(crate) t5: Scalar,
-    pub(crate) hashed_message: [u8; 64],
+    pub(crate) hashed_message: Vec<u8>,
 }
 
-impl TryFrom<&[u8; 32 * 4]> for PrepareMessage {
+impl TryFrom<&[u8]> for PrepareMessage {
     type Error = UserError;
 
-    fn try_from(bytes: &[u8; 32 * 4]) -> Result<PrepareMessage, UserError> {
+    fn try_from(bytes: &[u8]) -> Result<PrepareMessage, UserError> {
         Ok(PrepareMessage {
             a: CompressedRistretto::from_slice(&bytes[0..32])?
                 .decompress()
@@ -54,10 +54,10 @@ impl TryFrom<&[u8; 32 * 4]> for PrepareMessage {
     }
 }
 
-impl TryFrom<&[u8; 32 * 5]> for PreSignature {
+impl TryFrom<&[u8]> for PreSignature {
     type Error = UserError;
 
-    fn try_from(bytes: &[u8; 32 * 5]) -> Result<Self, UserError> {
+    fn try_from(bytes: &[u8]) -> Result<Self, UserError> {
         Ok(PreSignature {
             c: Scalar::from_canonical_bytes(
                 (&bytes[0..32])
@@ -103,9 +103,9 @@ impl UserParameters {
         &self,
         rng: &mut R,
         commitment: &RistrettoPoint,
-        hashed_message: &[u8; 64],
-        signer_message: &[u8; 32 * 4],
-    ) -> Result<(UserState, [u8; 32]), UserError> {
+        hashed_message: &[u8],
+        signer_message: &[u8],
+    ) -> Result<(UserState, Vec<u8>), UserError> {
         let prepare_message = PrepareMessage::try_from(signer_message)?;
 
         if prepare_message.rnd == Scalar::ZERO {
@@ -153,16 +153,16 @@ impl UserParameters {
                 t3: t3,
                 t4: t4,
                 t5: t5,
-                hashed_message: *hashed_message,
+                hashed_message: (*hashed_message).to_vec(),
             },
-            e.to_bytes(),
+            Vec::from(e.to_bytes()),
         ))
     }
 
     pub fn compute_signature(
         &self,
         user_state: &UserState,
-        presignature_bytes: &[u8; 32 * 5],
+        presignature_bytes: &[u8],
     ) -> Result<(Signature, RistrettoPoint, Scalar, Scalar), UserError> {
         let presignature = PreSignature::try_from(presignature_bytes)?;
 

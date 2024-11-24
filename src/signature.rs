@@ -14,7 +14,7 @@ pub struct Signature {
 }
 
 impl Signature {
-    pub fn to_bytes(&self) -> [u8; 32 * 7] {
+    pub fn to_bytes(&self) -> Vec<u8> {
         [
             self.xi.compress().to_bytes(),
             self.rho.to_bytes(),
@@ -25,8 +25,5 @@ impl Signature {
             self.delta.to_bytes(),
         ]
         .concat()
-        .as_slice()
-        .try_into()
-        .expect("slice with incorrect length")
     }
 }
