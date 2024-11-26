@@ -2,15 +2,15 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Serialize,Deserialize};
 
-#[derive(Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq,Debug, PartialEq, Serialize, Deserialize)]
 pub struct Signature {
-    pub(crate) xi: RistrettoPoint,
-    pub(crate) rho: Scalar,
-    pub(crate) omega: Scalar,
-    pub(crate) sigma1: Scalar,
-    pub(crate) sigma2: Scalar,
-    pub(crate) mu: Scalar,
-    pub(crate) delta: Scalar,
+    pub xi: RistrettoPoint,
+    pub rho: Scalar,
+    pub omega: Scalar,
+    pub sigma1: Scalar,
+    pub sigma2: Scalar,
+    pub mu: Scalar,
+    pub delta: Scalar,
 }
 
 impl Signature {
